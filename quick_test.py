@@ -102,15 +102,6 @@ mgas_len =len(mgas_bins)
 sfr_len = len(sfr_bins)
 ssfr_len = len(ssfr_bins)
     
-tb = burst_params['total_time_yr']
-array_times_out = np.array([tb*0.01,tb*0.05,tb*0.1,tb*0.15,tb*0.18,tb*0.21,tb*0.25,tb*0.5,tb*0.75])#,tb])             
-#index_times_out = np.append([0], np.searchsorted(times, array_times_out))#timestep where to save output
-SFR_out = np.zeros( ( len(array_times_out)+1, len(mstar_bins)-1, len(sfr_bins)-1  ) )
-sSFR_out = np.zeros( ( len(array_times_out)+1, len(mstar_bins)-1, len(ssfr_bins)-1  ) )
-sSFR_MS_out = np.zeros( ( len(array_times_out)+1, len(mstar_bins)-1, len(ssfr_bins_MS)-1  ) )
-
-gas_out = np.zeros( ( len(array_times_out)+1, len(mstar_bins)-1, len(mgas_bins) -1 ) )
-mu_out = np.zeros( (len(mstar_bins)-1,len(mu_bins)-1))  # add also mstar dependence
 
 
 def FakMa10_MergerRate_dlog10(M, zz,e, dynfrict=False):
@@ -213,7 +204,6 @@ def burst_evol(Mburst,preburst_stars,burst_params,SFR,SFRstep,array_times_out, c
     mass = np.max(mass,axis=1).reshape((len(Mburst),1))-mass
 
     tt = np.fliplr(times)
-    print(times)
     ii = np.tile(array_times_out,(len(Mburst),1)) 
     indices = np.array(list(map( np.searchsorted, *[tt,ii])))
     indices[indices==times.shape[1]] = times.shape[1]-1
@@ -285,22 +275,32 @@ def make_dndlogmdot(dndt,dtdlogmdot):
 
 def run(z,zmin=None):#, burst_params, Lbox):
     
+    tb = burst_params['total_time_yr']
+        
+    if burst_params['integrate']:
+        cosmo_z_out = zmin
+        age_univ_out = Cosmo.lookbackTime(cosmo_z_out)
+        array_times_out = [(Cosmo.lookbackTime(z)-age_univ_out)*1.e9]
+    else:
+        array_times_out = np.array([tb*0.01,tb*0.05,tb*0.1,tb*0.15,tb*0.18,tb*0.21,tb*0.25,tb*0.5,tb*0.75])#,tb])     
+        cosmo_times_out = Cosmo.lookbackTime(z)-array_times_out/1.e9
+        cosmo_z_out = Cosmo.lookbackTime(cosmo_times_out, inverse=True)
+#index_times_out = np.append([0], np.searchsorted(times, array_times_out))#timestep where to save output
+    SFR_out = np.zeros( ( len(array_times_out)+1, len(mstar_bins)-1, len(sfr_bins)-1  ) )
+    sSFR_out = np.zeros( ( len(array_times_out)+1, len(mstar_bins)-1, len(ssfr_bins)-1  ) )
+    sSFR_MS_out = np.zeros( ( len(array_times_out)+1, len(mstar_bins)-1, len(ssfr_bins_MS)-1  ) )
+
+    gas_out = np.zeros( ( len(array_times_out)+1, len(mstar_bins)-1, len(mgas_bins) -1 ) )
+
     start = time.time()
     max_mu = 0; min_mu =-3; bins_mu = 0.1
     mu_bins = np.arange(min_mu,max_mu,bins_mu)
   #  mu_out = np.zeros(len(mu_bins)-1)  # add also mstar dependence
     mu_out = np.zeros( (len(mstar_bins)-1,len(mu_bins)-1))  # add also mstar dependence
 
-    if burst_params['integrate']:
-        cosmo_z_out = zmin
-        age_univ_out = Cosmo.lookbackTime(cosmo_z_out)
-        array_times_out = (Cosmo.lookbackTime(z)-age_univ_out)*1.e9
-        print(array_times_out)
-    else:
-        cosmo_times_out = Cosmo.lookbackTime(z)-array_times_out/1.e9
-        cosmo_z_out = Cosmo.lookbackTime(cosmo_times_out, inverse=True)
-    
-
+    #################################################################################
+    ###################################### Main starts here #########################
+    #################################################################################
     
     #read and make merger rate
     Vol = (Lbox/h)**3
@@ -620,7 +620,8 @@ if __name__=='__main__':
         if burst_params['integrate']:
             redshifts=np.arange(2,2.55,0.05)[::-1]
             for z in redshifts:
-                print(z)
+                print(round(z,2))
+                z = round(z,2)
                 run(z,zmin=[2.,2])
     #call function
     
